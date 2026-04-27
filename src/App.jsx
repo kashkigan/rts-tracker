@@ -69,6 +69,66 @@ function makeEmptyWeek() {
   }
 }
 
+function buildInitialState() {
+  const initialWeek = toDateKey(weekStartFrom(new Date()))
+  return {
+    ...DEFAULT_DATA,
+    currentWeekStart: initialWeek,
+    weeks: {
+      [initialWeek]: makeEmptyWeek(),
+    },
+  }
+}
+
+function normalizeState(raw) {
+  const fallback = buildInitialState()
+  if (!raw || typeof raw !== 'object') return fallback
+
+  const theme = raw.theme === 'light' ? 'light' : 'dark'
+
+  // New shape
+  if (raw.currentWeekStart && raw.weeks && typeof raw.weeks === 'object') {
+    const week = raw.weeks[raw.currentWeekStart] ?? makeEmptyWeek()
+    return {
+      theme,
+      currentWeekStart: raw.currentWeekStart,
+      weeks: {
+        ...raw.weeks,
+        [raw.currentWeekStart]: {
+          thursdaySelected: week.thursdaySelected ?? THURSDAY_OPTIONS[0],
+          fridaySelected: week.fridaySelected ?? FRIDAY_OPTIONS[0],
+          entries: Array.isArray(week.entries) ? week.entries : [],
+        },
+      },
+    }
+  }
+
+  // Legacy shape migration
+  const migrated = buildInitialState()
+  const weekKey = migrated.currentWeekStart
+  const entries = []
+  const legacyLog = Array.isArray(raw.log) ? raw.log : []
+
+  for (const item of legacyLog) {
+    if (!item?.label || !item?.day) continue
+    const calledAt = item.timestamp ? new Date(item.timestamp) : new Date()
+    entries.push({
+      id: item.id ?? crypto.randomUUID(),
+      kind: item.day === 'thursday' ? 'thursday' : 'friday',
+      label: item.label,
+      calledAt: calledAt.toISOString(),
+      cancelAt: addDays(calledAt, 20).toISOString(),
+    })
+  }
+
+  migrated.theme = theme
+  migrated.weeks[weekKey] = {
+    ...migrated.weeks[weekKey],
+    entries,
+  }
+  return migrated
+}
+
 function toPieData(entries, kind, options) {
   const counts = Object.fromEntries(options.map((item) => [item, 0]))
   for (const entry of entries) {
@@ -80,15 +140,12 @@ function toPieData(entries, kind, options) {
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard')
   const [state, setState] = useState(() => {
-    const stored = window.localStorage.getItem('rx-tracker-state')
-    if (stored) return JSON.parse(stored)
-    const initialWeek = toDateKey(weekStartFrom(new Date()))
-    return {
-      ...DEFAULT_DATA,
-      currentWeekStart: initialWeek,
-      weeks: {
-        [initialWeek]: makeEmptyWeek(),
-      },
+    try {
+      const stored = window.localStorage.getItem('rx-tracker-state')
+      if (!stored) return buildInitialState()
+      return normalizeState(JSON.parse(stored))
+    } catch {
+      return buildInitialState()
     }
   })
   const [cloudMessage, setCloudMessage] = useState('')
@@ -117,9 +174,7 @@ function App() {
       }
 
       if (data?.payload) {
-        const next = data.payload
-        if (!next.currentWeekStart) return
-        setState(next)
+        setState(normalizeState(data.payload))
         setCloudMessage('Cloud data loaded.')
       }
     }
