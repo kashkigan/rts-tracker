@@ -43,9 +43,9 @@ function toDateKey(date) {
 function weekStartFrom(date) {
   const d = new Date(date)
   const day = d.getDay()
-  const diff = day === 0 ? -6 : 1 - day
+  const diff = (day - 5 + 7) % 7
   d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() + diff)
+  d.setDate(d.getDate() - diff)
   return d
 }
 
@@ -88,12 +88,25 @@ function normalizeState(raw) {
 
   // New shape
   if (raw.currentWeekStart && raw.weeks && typeof raw.weeks === 'object') {
-    const week = raw.weeks[raw.currentWeekStart] ?? makeEmptyWeek()
+    const normalizedWeeks = Object.fromEntries(
+      Object.entries(raw.weeks).map(([key, value]) => {
+        const week = value && typeof value === 'object' ? value : makeEmptyWeek()
+        return [
+          key,
+          {
+            thursdaySelected: week.thursdaySelected ?? THURSDAY_OPTIONS[0],
+            fridaySelected: week.fridaySelected ?? FRIDAY_OPTIONS[0],
+            entries: Array.isArray(week.entries) ? week.entries : [],
+          },
+        ]
+      }),
+    )
+    const week = normalizedWeeks[raw.currentWeekStart] ?? makeEmptyWeek()
     return {
       theme,
       currentWeekStart: raw.currentWeekStart,
       weeks: {
-        ...raw.weeks,
+        ...normalizedWeeks,
         [raw.currentWeekStart]: {
           thursdaySelected: week.thursdaySelected ?? THURSDAY_OPTIONS[0],
           fridaySelected: week.fridaySelected ?? FRIDAY_OPTIONS[0],
@@ -242,6 +255,25 @@ function App() {
     })
   }
 
+  function removeLatestEntry(kind, label) {
+    setState((current) => {
+      const week = current.weeks[current.currentWeekStart] ?? makeEmptyWeek()
+      const target = week.entries.find((item) => item.kind === kind && item.label === label)
+      if (!target) return current
+
+      return {
+        ...current,
+        weeks: {
+          ...current.weeks,
+          [current.currentWeekStart]: {
+            ...week,
+            entries: week.entries.filter((item) => item.id !== target.id),
+          },
+        },
+      }
+    })
+  }
+
   function removeEntry(id) {
     setState((current) => {
       const week = current.weeks[current.currentWeekStart] ?? makeEmptyWeek()
@@ -264,6 +296,15 @@ function App() {
       ...current,
       weeks: {
         ...current.weeks,
+        [current.currentWeekStart]: makeEmptyWeek(),
+      },
+    }))
+  }
+
+  function clearAllWeeks() {
+    setState((current) => ({
+      ...current,
+      weeks: {
         [current.currentWeekStart]: makeEmptyWeek(),
       },
     }))
@@ -320,7 +361,21 @@ function App() {
               className={`nav-btn ${activeTab === tab ? 'is-active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
-              {tab === 'Dashboard' ? '◻' : '◯'}
+              {tab === 'Dashboard' ? (
+                <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M3 13h8V3H3v10Zm10 8h8V3h-8v18ZM3 21h8v-6H3v6Z"
+                  />
+                </svg>
+              ) : (
+                <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M11 2a10 10 0 1 0 10 10H11V2Zm2 0v8h8A10 10 0 0 0 13 2Z"
+                  />
+                </svg>
+              )}
             </button>
           ))}
         </nav>
@@ -412,6 +467,13 @@ function App() {
               >
                 +
               </button>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => removeLatestEntry('thursday', currentWeek.thursdaySelected)}
+              >
+                -
+              </button>
             </div>
           </div>
           <div className="panel">
@@ -447,6 +509,13 @@ function App() {
               >
                 +
               </button>
+              <button
+                type="button"
+                className="ghost-btn"
+                onClick={() => removeLatestEntry('friday', currentWeek.fridaySelected)}
+              >
+                -
+              </button>
             </div>
           </div>
         </section>
@@ -463,6 +532,9 @@ function App() {
             </div>
             <button type="button" className="danger-btn" onClick={clearAll}>
               Reset Week
+            </button>
+            <button type="button" className="ghost-btn" onClick={clearAllWeeks}>
+              Clear Logs
             </button>
           </div>
           <div className="log-sections">

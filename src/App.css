@@ -39,6 +39,12 @@ nav {
   font-size: 0.8rem;
 }
 
+.nav-icon {
+  width: 0.85rem;
+  height: 0.85rem;
+  display: block;
+}
+
 .nav-btn:hover,
 .primary-btn:hover,
 .ghost-btn:hover,
