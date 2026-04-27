@@ -1,19 +1,31 @@
 # RX Tracker
 
-RX Tracker is a return-to-stock workflow app for pharmacy shift use.
+RX Tracker is a return-to-stock workflow app for pharmacy use made to replace my Excel sheet.
+Created to increase efficiency and observe trends in cancelling medications that were not picked up. 
+I maintained pharmacy compliance by keeping no patient records or data, just how many medications were called and cancelled.
 
-## Highlights
+Thursdays - Call patients and log if it was called, left a message, or no answer.
+Fridays (Approx. 2 weeks after) - Cancel medication and log if it was regular, narcotic, antibiotic/waiter, fridge item, or came from central fill.
 
-- PlayStation-inspired UI theme with light and dark mode
-- Splash screen and polished navigation
+## Main Features
+
+- Light and dark mode
+- Simple, minimal navigation
 - Dashboard with Thursday and Friday pie-chart tracking
-- One-click logging and easy correction/removal of mistakes
-- Notes section for shift context and handoff details
-- Optional cloud save support through Supabase
+- One-click logging and easy addition/removal 
+- Cloud save support through Supabase
 
-## Project Links
+## Tech Stack
 
-- GitHub: [kashkigan/rts-tracker](https://github.com/kashkigan/rts-tracker)
-- LinkedIn: [Kiranpal Gandhi](https://www.linkedin.com/in/kiranpal-gandhi)
+Frontend: React, HTML, CSS - Hosted on Vercel
+Backend: Javascript - Node.js
+Database: SQL - Hosted on Supabase
 
-Made by Kiranpal Gandhi 2026.
+## Future Improvements
+
+- Better visuals
+- Splash screen
+- Login system, users and admin controls 
+- More features 
+
+Made by Kiranpal Gandhi, with love.
