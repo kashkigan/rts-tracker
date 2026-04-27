@@ -40,13 +40,21 @@ function toDateKey(date) {
   return `${year}-${month}-${day}`
 }
 
-function weekStartFrom(date) {
-  const d = new Date(date)
-  const day = d.getDay()
-  const diff = (day - 5 + 7) % 7
-  d.setHours(0, 0, 0, 0)
-  d.setDate(d.getDate() - diff)
-  return d
+function defaultActiveWeekStart(date) {
+  // Use the oldest still-active Friday cohort:
+  // Friday start + 20 days (through Thursday), and keep that cohort selected
+  // until the next day after expiry.
+  const threshold = addDays(date, -20)
+  threshold.setHours(0, 0, 0, 0)
+  const day = threshold.getDay()
+  const daysToFriday = (5 - day + 7) % 7
+  threshold.setDate(threshold.getDate() + daysToFriday)
+  return threshold
+}
+
+function isFridayKey(weekKey) {
+  const date = new Date(`${weekKey}T00:00:00`)
+  return !Number.isNaN(date.getTime()) && date.getDay() === 5
 }
 
 function getWeekRangeLabel(weekKey) {
@@ -70,7 +78,7 @@ function makeEmptyWeek() {
 }
 
 function buildInitialState() {
-  const initialWeek = toDateKey(weekStartFrom(new Date()))
+  const initialWeek = toDateKey(defaultActiveWeekStart(new Date()))
   return {
     ...DEFAULT_DATA,
     currentWeekStart: initialWeek,
@@ -101,13 +109,16 @@ function normalizeState(raw) {
         ]
       }),
     )
-    const week = normalizedWeeks[raw.currentWeekStart] ?? makeEmptyWeek()
+    const migratedCurrentWeekStart = isFridayKey(raw.currentWeekStart)
+      ? raw.currentWeekStart
+      : toDateKey(defaultActiveWeekStart(new Date(`${raw.currentWeekStart}T00:00:00`)))
+    const week = normalizedWeeks[migratedCurrentWeekStart] ?? makeEmptyWeek()
     return {
       theme,
-      currentWeekStart: raw.currentWeekStart,
+      currentWeekStart: migratedCurrentWeekStart,
       weeks: {
         ...normalizedWeeks,
-        [raw.currentWeekStart]: {
+        [migratedCurrentWeekStart]: {
           thursdaySelected: week.thursdaySelected ?? THURSDAY_OPTIONS[0],
           fridaySelected: week.fridaySelected ?? FRIDAY_OPTIONS[0],
           entries: Array.isArray(week.entries) ? week.entries : [],
